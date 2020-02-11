@@ -1,6 +1,8 @@
 # kamailio_module
 
 ```
+yum install -y flex bison gcc g++ gcc-c++
+
 /usr/src/kamailio/src/modules/my_module
 
 KAM_PREFIX=/usr/src/test
