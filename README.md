@@ -5,7 +5,7 @@
 
 KAM_PREFIX=/usr/src/test
 make install_modules="my_module" cfg
-make all
+make Q=0 all
 make modules
 make PREFIX=$KAM_PREFIX install
 
