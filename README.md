@@ -1,4 +1,4 @@
-# kamailio_module
+# my_module
 
 ```
 yum install -y flex bison gcc g++ gcc-c++
