@@ -60,13 +60,14 @@ static int get_sip_to(struct sip_msg *msg) {
 
 	LM_ERR("get_sip_to\n");
 
-	struct to_body* to_b;
+	str my_uri;
+	my_uri = msg->first_line.u.request.uri;
 
-	if ( !msg->to && ( parse_headers(msg,HDR_TO_F,0)==-1 || !msg->to)) {
-		LM_ERR("bad msg or missing To header\n");
-		goto error;
-	}
+	LM_ERR("[MY] To URI user is [%.*s] \n", my_uri.len, my_uri.s);
+	LM_ERR(" ---------------------------- \n");
 
+
+/*
 	if (msg->to->parsed) {
 		struct to_body *tb = get_to(msg);
 
@@ -75,12 +76,13 @@ static int get_sip_to(struct sip_msg *msg) {
 			return -1;
 		}
 
-		LM_ERR("To URI user is %s \n", tb->parsed_uri.user.s);
+		LM_ERR("To URI user is [%s] \n", tb->parsed_uri.user.s);
+		LM_ERR(" ---------------------------- \n");
 	}
 
+*/
+
 	return 0;
-error:
-	return -1;
 }
 
 
