@@ -10,6 +10,8 @@ static cmd_export_t cmds[] = {
 	{0,0,0,0,0}
 };
 
+// The real structure is kam_module_exports
+// due to we define  KAMAILIO_MOD_INTERFACE
 struct module_exports exports = {
 	"my_module",
 	DEFAULT_DLFLAGS,
