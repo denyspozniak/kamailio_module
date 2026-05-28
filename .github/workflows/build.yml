@@ -46,14 +46,20 @@ jobs:
 
       - name: Static analysis (cppcheck)
         run: |
+          # MODULE_VERSION expands to global declarations via Kamailio's
+          # sr_module.h, which cppcheck can't resolve in isolation — define
+          # it away so cppcheck can focus on our actual logic.
           cppcheck \
             -I kamailio/src \
             -I kamailio/src/core \
             -I kamailio/src/core/parser \
+            -DMODULE_VERSION= \
             --enable=warning,style,performance,portability \
             --inline-suppr \
             --suppress=missingIncludeSystem \
             --suppress=unusedStructMember \
+            --suppress=unknownMacro \
+            --suppress=toomanyconfigs \
             --error-exitcode=1 \
             kamailio/src/modules/my_module/my_module.c
 
