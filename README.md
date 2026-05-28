@@ -1,5 +1,12 @@
 # my_module — A Minimal Kamailio Module in C
 
+[![Build](https://github.com/denyspozniak/kamailio_module/actions/workflows/build.yml/badge.svg)](https://github.com/denyspozniak/kamailio_module/actions/workflows/build.yml)
+![Kamailio](https://img.shields.io/badge/Kamailio-master-2C8EBB?logo=asterisk&logoColor=white)
+![Language](https://img.shields.io/badge/C-99-A8B9CC?logo=c&logoColor=white)
+![Platform](https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black)
+![Protocol](https://img.shields.io/badge/protocol-SIP-FF6F00)
+![Status](https://img.shields.io/badge/status-learning%20project-success)
+
 A tiny, hands-on example of a **Kamailio** module written in C. It exists to make one thing easy:
 **get from "I have never written a Kamailio module" to "I can read a SIP header from a route script"** — without any extra ceremony.
 
