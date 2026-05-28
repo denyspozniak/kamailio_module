@@ -1,0 +1,133 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: cppcheck + build + load-test (Kamailio master)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      KAM_PREFIX: ${{ github.workspace }}/kam-prefix
+
+    steps:
+      - name: Check out this module
+        uses: actions/checkout@v4
+        with:
+          path: my_module
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            flex bison gcc g++ make pkg-config \
+            libssl-dev libcurl4-openssl-dev libpcre3-dev libxml2-dev \
+            libsqlite3-dev libsctp-dev \
+            cppcheck
+
+      - name: Clone Kamailio (master)
+        uses: actions/checkout@v4
+        with:
+          repository: kamailio/kamailio
+          ref: master
+          path: kamailio
+
+      - name: Place module into Kamailio tree
+        run: |
+          mkdir -p kamailio/src/modules/my_module
+          # Only build-relevant files; skip VCS / docs / CI metadata.
+          cp my_module/my_module.c   kamailio/src/modules/my_module/
+          cp my_module/my_module.cfg kamailio/src/modules/my_module/
+          cp my_module/Makefile      kamailio/src/modules/my_module/
+
+      - name: Static analysis (cppcheck)
+        run: |
+          cppcheck \
+            -I kamailio/src \
+            -I kamailio/src/core \
+            -I kamailio/src/core/parser \
+            --enable=warning,style,performance,portability \
+            --inline-suppr \
+            --suppress=missingIncludeSystem \
+            --suppress=unusedStructMember \
+            --error-exitcode=1 \
+            kamailio/src/modules/my_module/my_module.c
+
+      - name: Configure and build Kamailio + my_module
+        working-directory: kamailio
+        run: |
+          make install_modules="my_module" cfg
+          make Q=0 all
+          make modules
+
+      - name: Verify the module .so was produced
+        run: |
+          SO="kamailio/src/modules/my_module/my_module.so"
+          test -f "$SO"
+          file "$SO"
+
+      - name: Install Kamailio to sandbox prefix
+        working-directory: kamailio
+        run: make PREFIX="$KAM_PREFIX" install
+
+      - name: Locate installed module directory
+        id: moddir
+        run: |
+          MODDIR="$(find "$KAM_PREFIX" -type f -name my_module.so \
+            -printf '%h\n' 2>/dev/null | head -n1)"
+          if [ -z "$MODDIR" ]; then
+            echo "::error::installed my_module.so not found under $KAM_PREFIX"
+            find "$KAM_PREFIX" -maxdepth 6 -type d | sort
+            exit 1
+          fi
+          echo "moddir=$MODDIR" >> "$GITHUB_OUTPUT"
+          echo "Module dir: $MODDIR"
+
+      - name: Load-test (start Kamailio briefly with my_module.cfg)
+        run: |
+          MODDIR='${{ steps.moddir.outputs.moddir }}'
+
+          set +e
+          timeout --preserve-status -s SIGTERM 5s \
+            "$KAM_PREFIX/sbin/kamailio" \
+              -f my_module/my_module.cfg \
+              -L "$MODDIR" \
+              -Y /tmp -E -e -dd -DD \
+            > kam.log 2>&1
+          rc=$?
+          set -e
+
+          echo "--- kamailio output (head) ---"
+          head -n 200 kam.log
+          echo "--- exit code: $rc ---"
+
+          # 0   = clean exit
+          # 143 = killed by our SIGTERM after 5s (i.e. it was happily running)
+          if [ "$rc" != "0" ] && [ "$rc" != "143" ]; then
+            echo "::error::Kamailio failed to start cleanly (exit $rc)"
+            exit 1
+          fi
+
+          # Confirm our module's init log line actually fired.
+          if ! grep -q "module initialized" kam.log; then
+            echo "::error::my_module init log line not seen — module did not load"
+            exit 1
+          fi
+
+          # Any ERROR lines from Kamailio core / our module = fail.
+          if grep -E "ERROR:" kam.log; then
+            echo "::error::ERROR lines found in Kamailio output"
+            exit 1
+          fi
+
+      - name: Upload Kamailio log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kamailio-log
+          path: kam.log
+          if-no-files-found: ignore
