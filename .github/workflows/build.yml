@@ -46,20 +46,29 @@ jobs:
 
       - name: Static analysis (cppcheck)
         run: |
-          # MODULE_VERSION expands to global declarations via Kamailio's
-          # sr_module.h, which cppcheck can't resolve in isolation — define
-          # it away so cppcheck can focus on our actual logic.
+          # Kamailio's headers are normally parsed inside the Kamailio build,
+          # where Makefile.defs sets a host of -D flags. To make cppcheck
+          # happy in isolation we replicate the most important ones:
+          #   * MODULE_VERSION — macro that expands to global declarations
+          #   * USE_FUTEX      — picks Linux futex as the locking method
+          #   * __OS_linux, _GNU_SOURCE — standard Linux build defines
+          # Suppressions cover noise from headers we don't own.
           cppcheck \
             -I kamailio/src \
             -I kamailio/src/core \
             -I kamailio/src/core/parser \
             -DMODULE_VERSION= \
+            -DUSE_FUTEX \
+            -D__OS_linux \
+            -D_GNU_SOURCE \
+            --max-configs=1 \
             --enable=warning,style,performance,portability \
             --inline-suppr \
             --suppress=missingIncludeSystem \
             --suppress=unusedStructMember \
             --suppress=unknownMacro \
             --suppress=toomanyconfigs \
+            --suppress=preprocessorErrorDirective \
             --error-exitcode=1 \
             kamailio/src/modules/my_module/my_module.c
 
